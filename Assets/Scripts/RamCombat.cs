@@ -1,52 +1,64 @@
 using UnityEngine;
-using UnityEngine.UI; // Import UI namespace
+using TMPro;
+using UnityEngine.UI;
+using System.Collections;
 
 public class RamCombat : MonoBehaviour
 {
     public int health = 100;
-    public Slider healthBar; // Health bar UI
+    public Slider healthBar;
+    public GameObject damageTextPrefab;
+    public TextMeshProUGUI winnerText; // Assign in Inspector
 
     private RamAnimationController animationController;
     private RamMovement movement;
+    private Animator animator;
     private bool isDead = false;
 
     void Start()
     {
         animationController = GetComponent<RamAnimationController>();
         movement = GetComponent<RamMovement>();
+        animator = GetComponent<Animator>();
 
         if (healthBar != null)
-            healthBar.maxValue = health; // Set max value
-        UpdateHealthUI(); // Initialize health bar
+            healthBar.maxValue = health;
+
+        UpdateHealthUI();
     }
 
     public void Attack(string attackType)
     {
-        if (isDead) return; // Stop attacking if dead
+        if (isDead) return;
 
         int damage = attackType switch
         {
             "Attack1" => 10,
-            "Attack2" => 20,
-            "PowerAttack" => 30,
+            "Attack2" => 15,
+            "PowerAttack" => 20,
             _ => 0
         };
 
         GameObject enemyRam = FindClosestEnemy();
         if (enemyRam != null)
         {
-            enemyRam.GetComponent<RamCombat>().TakeDamage(damage);
+            RamCombat enemyCombat = enemyRam.GetComponent<RamCombat>();
+
+            if (!enemyCombat.isDead)
+            {
+                enemyCombat.TakeDamage(damage);
+                enemyCombat.ShowDamageNumber(enemyRam.transform.position + Vector3.up * 2, damage);
+            }
         }
     }
 
     public void TakeDamage(int damage)
     {
-        if (isDead) return; // Ignore if already dead
+        if (isDead) return;
 
         health -= damage;
-        UpdateHealthUI(); // Update health bar
-
-        animationController.PlayHitReaction(); // Play hit animation
+        UpdateHealthUI();
+        animationController.PlayHitReaction();
 
         if (health <= 0)
         {
@@ -56,12 +68,30 @@ public class RamCombat : MonoBehaviour
 
     private void Die()
     {
+        if (isDead) return;
+
         isDead = true;
         health = 0;
-        UpdateHealthUI(); // Set health bar to 0
+        UpdateHealthUI();
+
         animationController.PlayDeathAnimation();
-        movement.StopMoving(); // Stop movement
+        movement.StopMoving();
+
         Debug.Log(gameObject.name + " has been defeated!");
+
+        GetComponent<RamCombat>().enabled = false;
+        if (movement != null) movement.enabled = false;
+
+       // StartCoroutine(DisableAnimatorAfterDeath());
+
+        DeclareWinner();
+    }
+
+    private IEnumerator DisableAnimatorAfterDeath()
+    {
+        yield return new WaitForSeconds(1f);
+        animator.speed = 0;
+        animator.enabled = false;
     }
 
     private void UpdateHealthUI()
@@ -83,5 +113,35 @@ public class RamCombat : MonoBehaviour
             }
         }
         return null;
+    }
+
+    private void ShowDamageNumber(Vector3 spawnPosition, int damage)
+    {
+        if (damageTextPrefab != null && !isDead)
+        {
+            GameObject damageText = Instantiate(damageTextPrefab, spawnPosition, Quaternion.identity);
+            TextMeshPro textMesh = damageText.GetComponent<TextMeshPro>();
+            textMesh.text = damage.ToString();
+
+            Destroy(damageText, 0.5f);
+        }
+    }
+
+    private void DeclareWinner()
+    {
+        GameObject[] rams = GameObject.FindGameObjectsWithTag("Ram");
+        foreach (GameObject ram in rams)
+        {
+            RamCombat ramCombat = ram.GetComponent<RamCombat>();
+            if (!ramCombat.isDead)
+            {
+                if (winnerText != null)
+                {
+                    winnerText.text = ram.name + " Wins!";
+                    winnerText.gameObject.SetActive(true); // Show the text
+                }
+                Debug.Log(ram.name + " Wins!");
+            }
+        }
     }
 }
