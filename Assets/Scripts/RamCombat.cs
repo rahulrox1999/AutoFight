@@ -2,6 +2,7 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
 public class RamCombat : MonoBehaviour
 {
@@ -82,16 +83,7 @@ public class RamCombat : MonoBehaviour
         GetComponent<RamCombat>().enabled = false;
         if (movement != null) movement.enabled = false;
 
-       // StartCoroutine(DisableAnimatorAfterDeath());
-
         DeclareWinner();
-    }
-
-    private IEnumerator DisableAnimatorAfterDeath()
-    {
-        yield return new WaitForSeconds(1f);
-        animator.speed = 0;
-        animator.enabled = false;
     }
 
     private void UpdateHealthUI()
@@ -141,7 +133,15 @@ public class RamCombat : MonoBehaviour
                     winnerText.gameObject.SetActive(true); // Show the text
                 }
                 Debug.Log(ram.name + " Wins!");
+
+                // Restart match after 3 seconds
+                Invoke("RestartMatch", 3f);
             }
         }
+    }
+
+    private void RestartMatch()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }
